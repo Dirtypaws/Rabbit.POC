@@ -2,6 +2,7 @@
 using CommandLine.Text;
 using RabbitMQ.Client;
 using System;
+using System.Data;
 using System.Text;
 
 namespace Publisher
@@ -10,7 +11,7 @@ namespace Publisher
     {
         private class Options
         {
-            [Option('f', "fill", Required = false, HelpText = "Fills the queue with the specified amount of messages")]
+            [Option('f', "fill", Required = false, HelpText = "Fills the queue with the specified amount of messages", DefaultValue = 0)]
             public int Fill { get; set; }
 
             [HelpOption]
@@ -25,33 +26,38 @@ namespace Publisher
             var opts = new Options();
             if(Parser.Default.ParseArguments(args, opts))
             {
+                if (opts.Fill == 0)
+                    Listen();
+
                 for (int i = 0; i < opts.Fill; i++)
                 {
-                    var now = DateTime.Now.ToString("ddMMyyyy hh:mm:ss");
+                    var now = DateTime.Now.ToString("ddMMMyyyy hh:mm:ss");
                     Publish($"{i} - {now}");
                 }
             }
             else
             {
-                Listen();
+                opts.GetUsage();
             }
         }
 
         private static void Listen()
         {
-            Console.Write("> ");
-            var msg = Console.ReadLine();
-            Publish(msg);
-            Listen();
+            while (true)
+            {
+                Console.Write("> ");
+                var msg = Console.ReadLine();
+                Publish(msg);
+            }
         }
 
         private static void Publish(string msg)
         {
-            var factory = new ConnectionFactory() { HostName = "localhost" };
+            var factory = new ConnectionFactory { HostName = "localhost" };
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-                channel.QueueDeclare(queue: "test.qu",
+                channel.QueueDeclare("test.qu",
                      durable: true,
                      exclusive: false,
                      autoDelete: false,
