@@ -1,4 +1,4 @@
-#Prerequisite
+# Prerequisite
 
 * Ensure you've stopped and released all of the default containers for Rabbit
 * `docker run -d --hostname rabbit --name dev -p 15682:15682 -p 15672:15672 -p 5672:5672 rabbitmq:3-management`
