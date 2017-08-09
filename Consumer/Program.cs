@@ -14,48 +14,44 @@ namespace Consumer
     {
         static void Main(string[] args)
         {
-            var factory = new ConnectionFactory { HostName = "localhost" };
+            //var factory = new ConnectionFactory { HostName = "localhost" };
+            var factory = new ConnectionFactory { HostName = "localhost", VirtualHost = "dev.dev", UserName = "dev.dev", Password = "dev" };
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-                //var sub = new Subscription(channel, "test.qu");
-                //foreach (BasicDeliverEventArgs e in sub)
-                //{
-                //    Console.ForegroundColor = ConsoleColor.Green;
-                //    Console.WriteLine(" [x] Received {0}", Encoding.UTF8.GetString(e.Body));
-                //    Console.ResetColor();
 
-                //    sub.Ack(e);
-                //}
-
-                channel.QueueDeclare(queue: "test.qu",
+                channel.QueueDeclare(queue: "SQIToGraph.Queue",
                                      durable: true,
                                      exclusive: false,
                                      autoDelete: false,
-                                     arguments: null);
+                                     arguments: new Dictionary<string, object>()
+                                     {
+                                         { "x-dead-letter-exchange", "RetryEx" }
+                                     });
 
                 var properties = channel.CreateBasicProperties();
                 properties.Persistent = true;
 
                 channel.BasicQos(0, 1, false);
 
-                var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += (model, ea) =>
+                var consumer = new AsyncEventingBasicConsumer(channel);
+                consumer.Received += async (model, ea) =>
                 {
                     var body = ea.Body;
                     var message = Encoding.UTF8.GetString(body);
 
+                    // Simulate doing some work
                     Thread.Sleep(DateTime.Now.Millisecond);
 
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine(" [x] Received {0}", message);
+                    await Task.Run(() => Console.WriteLine(" [x] Received {0}", message));
                     Console.ResetColor();
 
                     channel.BasicAck(ea.DeliveryTag, false);
                 };
 
-                channel.BasicConsume(queue: "test.qu",
-                                     noAck: false,
+                channel.BasicConsume(queue: "SQIToGraph.Queue", 
+                                     autoAck: true,
                                      consumer: consumer);
 
                 Console.WriteLine(" Press [enter] to exit.");

@@ -2,7 +2,7 @@
 using CommandLine.Text;
 using RabbitMQ.Client;
 using System;
-using System.Data;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Publisher
@@ -32,7 +32,7 @@ namespace Publisher
                 for (int i = 0; i < opts.Fill; i++)
                 {
                     var now = DateTime.Now.ToString("ddMMMyyyy hh:mm:ss");
-                    Publish($"{i} - {now}");
+                    Publish(i.ToString());
                 }
             }
             else
@@ -53,15 +53,19 @@ namespace Publisher
 
         private static void Publish(string msg)
         {
-            var factory = new ConnectionFactory { HostName = "localhost" };
+            var factory = new ConnectionFactory { HostName = "localhost", VirtualHost = "dev.dev", UserName = "dev.dev", Password = "dev" };
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-                channel.QueueDeclare("test.qu",
-                     durable: true,
-                     exclusive: false,
-                     autoDelete: false,
-                     arguments: null);
+
+                channel.QueueDeclare(queue: "SQIToGraph.Queue",
+                    durable: true,
+                    exclusive: false,
+                    autoDelete: false,
+                    arguments: new Dictionary<string, object>
+                    {
+                        { "x-dead-letter-exchange", "RetryEx" }
+                    });
 
                 var properties = channel.CreateBasicProperties();
                 properties.Persistent = true;
@@ -69,7 +73,7 @@ namespace Publisher
                 var body = Encoding.UTF8.GetBytes(msg);
 
                 channel.BasicPublish(exchange: "",
-                                        routingKey: "test.qu",
+                                        routingKey: "SQIToGraph.Queue",
                                         basicProperties: properties,
                                         body: body);
 
